@@ -2229,6 +2229,18 @@ public class TestAttackClient extends AttackTesterBase implements Stoppable, MAP
         this.lastProvideRoamingNumberResponse = response;
     }
 
+    @Override
+    public void onIstCommandRequest(IstCommandRequest request) {
+        System.err.println("Warning! Placeholded method used");
+
+    }
+
+    @Override
+    public void onIstCommandResponse(IstCommandResponse response) {
+        System.err.println("Warning! Placeholded method used");
+
+    }
+
     public ProvideRoamingNumberResponse getLastProvideRoamingNumberResponse() {
         return this.lastProvideRoamingNumberResponse;
     }
