@@ -1,41 +1,144 @@
 <?xml version="1.0"?>
 <project name="ss7.release.sf" default="release" basedir=".">
-	<property environment="sys"/>
-	<property name="release.dir" location="${ant.file.ss7.release.sf}/../target" />
-	<property name="base.dir" location="${ant.file.ss7.release.sf}/.." />
-	<property name="checkout.asn.dir" value="${base.dir}/checkout/asn" />
-	<property name="checkout.sctp.dir" value="${base.dir}/checkout/sctp" />
-	<property name="restcomm.jss7.dist" value="${release.dir}/restcomm-jss7-dist" />
-	<property name="jss7.addon" value="${release.dir}/jss7-addon" />
-	<property name="jss7.dir" value="${base.dir}/.." />
-	<property name="docs.dir" location="${restcomm.jss7.dist}/_docs" />
+    <property environment="sys"/>
+    <property name="release.dir" location="${ant.file.ss7.release.sf}/../target"/>
+    <property name="base.dir" location="${ant.file.ss7.release.sf}/.."/>
+    <property name="checkout.asn.dir" value="${base.dir}/checkout/asn"/>
+    <property name="checkout.sctp.dir" value="${base.dir}/checkout/sctp"/>
+    <property name="restcomm.jss7.dist" value="${release.dir}/restcomm-jss7-dist"/>
+    <property name="jss7.addon" value="${release.dir}/jss7-addon"/>
+    <property name="jss7.dir" value="${base.dir}/.."/>
+    <property name="docs.dir" location="${restcomm.jss7.dist}/_docs"/>
+	<property name="checkout.dir" value="${base.dir}/checkout" />
 
 	<!--Versions -->
-	<property name="checkout.asn.version" value="2.1.5" />
-	<property name="checkout.sctp.version" value="1.7.8" />
+	<property name="asn.version" value="2.1.5"/>
+	<property name="sctp.version" value="1.7.8"/>
 	<property name="release.version" value="${jSS7.release.version}"/>
 
+	<property name="checkout.asn.version" value="2.1.5"/>
+	<property name="checkout.sctp.version" value="1.7.8"/>
+
+	<property name="github.url" value="https://github.com/RestComm" />
+
+	<property name="jasn.download.distro.jar-file" value="asn-${asn.version}.jar" />
+	<property name="jasn.download.distro.doc-file" value="restcomm-jasn-doc-${asn.version}.zip" />
+	<property name="jasn.download.url-jar" value="${github.url}/jasn/releases/download/${asn.version}/${jasn.download.distro.jar-file}" />
+	<property name="jasn.download.url-doc" value="${github.url}/jasn/releases/download/${asn.version}/documentation.zip" />
+	<property name="jasn.distro.dir" value="${checkout.asn.dir}/jasn-${asn.version}" />
+
+
+
+
+	<property name="sctp.download.distro.jar-api-file" value="sctp-api-${sctp.version}.jar" />
+	<property name="sctp.download.distro.jar-impl-file" value="sctp-impl-${sctp.version}.jar" />
+	<property name="sctp.download.distro.doc-file" value="restcomm-sctp-doc-${sctp.version}.zip" />
+	<property name="sctp.download.url-api-jar" value="${github.url}/sctp/releases/download/${sctp.version}/${sctp.download.distro.jar-api-file}" />
+	<property name="sctp.download.url-impl-jar" value="${github.url}/sctp/releases/download/${sctp.version}/${sctp.download.distro.jar-impl-file}" />
+	<property name="sctp.download.url-doc" value="${github.url}/sctp/releases/download/${sctp.version}/documentation.zip" />
+	<property name="sctp.distro.dir" value="${checkout.sctp.dir}/sctp-${sctp.version}" />
+
+
+
+	<property name="jasn.distro.doc-zip.path" value="${checkout.dir}/${jasn.download.distro.doc-file}" />
+	<property name="sctp.distro.doc-zip.path" value="${checkout.dir}/${sctp.download.distro.doc-file}" />
 
 	<condition property="mvn.executable" value="${sys.M2_HOME}\bin\mvn.bat" else="mvn">
 		<os family="windows"/>
 	</condition>
-	
+
 	<taskdef onerror="fail" resource="net/sf/antcontrib/antlib.xml">
 		<classpath>
 			<pathelement location="${ant.file.ss7.release.sf}/../ant-contrib-1.0b3.jar" />
 		</classpath>
 	</taskdef>
 
-	<target name="release" depends="clean,build-asn,build-sctp,build-jss7,build-docs,copy-asn,copy-sctp,copy-jss7,copy-documentation,make-final-zip" />
-	
-  	<target name="release-restcomm" depends="clean,build-asn,build-sctp,build-docs,copy-asn,copy-sctp,copy-jss7,copy-documentation,make-final-zip" />
-	
+	<target name="release"
+			depends="clean,get-deps,extract-deps,build-jss7,build-docs,copy-asn,copy-sctp,copy-jss7,copy-documentation,make-final-zip"/>
+	<target name="release-spiiras"
+			depends="clean,get-deps,extract-deps,build-jss7,copy-asn,copy-sctp,copy-jss7,make-final-zip"/>
 
-	<!-- Build dependencies-->
-	
+
+	<target name="release-restcomm"
+			depends="clean,get-deps,extract-deps,build-docs,copy-asn,copy-sctp,copy-jss7,copy-documentation,make-final-zip"/>
+
+	<!-- Download dependencies-->
+	<target name="get-deps" depends="get-asn,get-sctp" />
+	<target name="extract-deps" depends="extract-asn,extract-sctp" />
+
+	<!-- Download dependencies-->
+	<target name="get-asn" unless="got.asn">
+		<echo>Downloading RestComm JASN version: ${asn.version}</echo>
+		<exec failonerror="true" executable="wget">
+			<arg value="${jasn.download.url-jar}" />
+			<arg value="--output-document=${jasn.download.distro.jar-file}" />
+			<arg value="--no-check-certificate" />
+		</exec>
+		<exec failonerror="true" executable="wget">
+			<arg value="${jasn.download.url-doc}" />
+			<arg value="--output-document=${jasn.download.distro.doc-file}" />
+			<arg value="--no-check-certificate" />
+		</exec>
+		<echo>Move ${jasn.download.distro.jar-file} to  ${checkout.dir}</echo>
+		<move file="${base.dir}/${jasn.download.distro.jar-file}" todir="${checkout.dir}"/>
+		<echo>Move ${jasn.download.distro.doc-file} to  ${checkout.dir}</echo>
+		<move file="${base.dir}/${jasn.download.distro.doc-file}" todir="${checkout.dir}"/>
+
+	</target>
+
+	<target name="extract-asn" depends="get-asn">
+		<delete dir="${checkout.asn.dir}" failonerror="false" />
+		<echo>Extract asn-doc to ${jasn.distro.dir}</echo>
+		<unzip src="${jasn.distro.doc-zip.path}" dest="${jasn.distro.dir}"/>
+		<echo>Move ${jasn.download.distro.jar-file} to ${jasn.disctro.dir}</echo>
+		<move file="${checkout.dir}/${jasn.download.distro.jar-file}" todir="${jasn.distro.dir}" failonerror="false"/>
+	</target>
+
+	<target name="get-sctp" unless="got.sctp">
+		<echo>Downloading RestComm SCTP version: ${sctp.version}</echo>
+		<exec failonerror="true" executable="wget">
+			<arg value="${sctp.download.url-api-jar}" />
+			<arg value="--output-document=${sctp.download.distro.jar-api-file}" />
+			<arg value="--no-check-certificate" />
+		</exec>
+		<exec failonerror="true" executable="wget">
+			<arg value="${sctp.download.url-impl-jar}" />
+			<arg value="--output-document=${sctp.download.distro.jar-impl-file}" />
+			<arg value="--no-check-certificate" />
+		</exec>
+		<exec failonerror="true" executable="wget">
+			<arg value="${sctp.download.url-doc}" />
+			<arg value="--output-document=${sctp.download.distro.doc-file}" />
+			<arg value="--no-check-certificate" />
+		</exec>
+		<echo>${sctp.download.distro.jar-api-file} to  ${checkout.dir}</echo>
+		<move file="${base.dir}/${sctp.download.distro.jar-api-file}" todir="${checkout.dir}"/>
+		<echo>${sctp.download.distro.jar-impl-file} to  ${checkout.dir}</echo>
+		<move file="${base.dir}/${sctp.download.distro.jar-impl-file}" todir="${checkout.dir}"/>
+		<echo>${sctp.download.distro.doc-file} to  ${checkout.dir}</echo>
+		<move file="${base.dir}/${sctp.download.distro.doc-file}" todir="${checkout.dir}"/>
+	</target>
+
+
+	<target name="extract-sctp" depends="get-sctp">
+		<delete dir="${checkout.sctp.dir}" failonerror="false" />
+		<echo>Extract asn-doc to "${sctp.distro.dir}</echo>
+		<unzip src="${sctp.distro.doc-zip.path}" dest="${sctp.distro.dir}"/>
+		<echo>Move ${sctp.download.distro.jar-api-file} to ${sctp.distro.dir}</echo>
+		<move file="${checkout.dir}/${sctp.download.distro.jar-api-file}" todir="${sctp.distro.dir}" failonerror="false"/>
+		<echo>Move ${sctp.download.distro.jar-impl-file} to ${sctp.distro.dir}</echo>
+		<move file="${checkout.dir}/${sctp.download.distro.jar-impl-file}" todir="${sctp.distro.dir}" failonerror="false"/>
+
+	</target>
+
+	<!-- Build dependencies from github sources (if you want to)-->
 	<target name="build-asn">
 		<echo>Building ASN</echo>
-		
+
+		<exec failonerror="true" executable="${mvn.executable}" dir="${base.dir}">
+			<arg line="-version"/>
+		</exec>
+
 		<exec failonerror="true" executable="git">
 		    <arg value="clone" />
 		    <arg value="https://github.com/Restcomm/jasn/" />
@@ -45,38 +148,32 @@
 		</exec>
 
 		<exec failonerror="true" executable="${mvn.executable}" dir="${checkout.asn.dir}">
-<<<<<<< HEAD
-			<arg line="install -Dmaven.test.skip=true" />
-=======
-			<arg line="clean install -Dmaven.test.skip=true -Pall" />
->>>>>>> jss7/master
+			<arg line="clean install -Dmaven.test.skip=true -Pall"/>
 		</exec>
 	</target>
-	
+
 	<target name="build-sctp">
 		<echo>Building SCTP</echo>
 
 		<exec failonerror="true" executable="git">
-		    <arg value="clone" />
-		    <arg value="https://github.com/Restcomm/sctp" />
-            <arg value="-b" />
-		    <arg value="${checkout.sctp.version}" />
-		    <arg value="${checkout.sctp.dir}" />
+		    <arg value="clone"/>
+		    <arg value="https://github.com/Restcomm/sctp"/>
+            <arg value="-b"/>
+		    <arg value="${checkout.sctp.version}"/>
+		    <arg value="${checkout.sctp.dir}"/>
 		</exec>
 
 		<exec failonerror="true" executable="${mvn.executable}" dir="${checkout.sctp.dir}">
-<<<<<<< HEAD
-			<arg line="install -Dmaven.test.skip=true -Prelease" />
-=======
-			<arg line="clean install -Dmaven.test.skip=true -Prelease,all" />
->>>>>>> jss7/master
+			<arg line="clean install -Dmaven.test.skip=true -Prelease,all"/>
 		</exec>
 	</target>
+
+	<!-- Copy Dependencies-->
 
 	<target name="copy-asn">
         <echo>Copy ASN</echo>
         <copy todir="${restcomm.jss7.dist}/asn/" failonerror="true">
-                <fileset dir="${checkout.asn.dir}/asn-impl/target/">
+                <fileset dir="${jasn.distro.dir}">
                         <include name="*.jar" />
                 </fileset>
        	</copy>
@@ -85,30 +182,26 @@
 	<target name="copy-sctp">
         <echo>Copy SCTP</echo>
         <copy todir="${restcomm.jss7.dist}/sctp/" failonerror="true">
-                <fileset dir="${checkout.sctp.dir}/sctp-impl/target/">
-                        <include name="*.jar" />
-                </fileset>
-	            <fileset dir="${checkout.sctp.dir}/sctp-api/target/">
-	                    <include name="*.jar" />
-	            </fileset>
+			<fileset dir="${sctp.distro.dir}">
+				<include name="*.jar" />
+			</fileset>
 	   	</copy>
 	</target>
 	
-	
     <target name="copy-jss7">
-            <echo>Copy SS7 Simulator</echo>
-            <copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-simulator" failonerror="true">
-                    <fileset dir="${jss7.dir}/tools/simulator/bootstrap/target/simulator-ss7">
-                            <include name="**" />
-                    </fileset>
-            </copy>
+		<echo>Copy SS7 Simulator</echo>
+		<copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-simulator" failonerror="true">
+			<fileset dir="${jss7.dir}/tools/simulator/bootstrap/target/simulator-ss7">
+				<include name="**"/>
+			</fileset>
+		</copy>
 
-	        <echo>Copy SS7 - SWG</echo>
-	        <copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-sgw" failonerror="true">
-	                <fileset dir="${jss7.dir}/sgw/boot/target/restcomm-sgw">
-	                        <include name="**" />
-	                </fileset>
-	        </copy>
+		<echo>Copy SS7 - SWG</echo>
+		<copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-sgw" failonerror="true">
+			<fileset dir="${jss7.dir}/sgw/boot/target/restcomm-sgw">
+				<include name="**" />
+			</fileset>
+		</copy>
 
 	        <!--echo>Copy SS7 native libs</echo>
 	        <copy todir="${restcomm.jss7.dist}/ss7/native" failonerror="true">
@@ -117,78 +210,84 @@
 	                </fileset>
 	        </copy-->
 
-            <echo>Copy Protocols</echo>
-            <copy todir="${restcomm.jss7.dist}/ss7/protocols" failonerror="true">
-                    <fileset dir="${jss7.dir}/tcap/tcap-api/target/">
-                            <include name="*.jar" />
-                    </fileset>
-	                <fileset dir="${jss7.dir}/tcap/tcap-impl/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-	                <fileset dir="${jss7.dir}/map/map-api/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-	                <fileset dir="${jss7.dir}/map/map-impl/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-		            <fileset dir="${jss7.dir}/cap/cap-api/target/">
-		                    <include name="*.jar" />
-		            </fileset>
-		            <fileset dir="${jss7.dir}/cap/cap-impl/target/">
-		                    <include name="*.jar" />
-		            </fileset>
-	                <fileset dir="${jss7.dir}/isup/isup-api/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-	                <fileset dir="${jss7.dir}/isup/isup-impl/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-	                <fileset dir="${jss7.dir}/inap/inap-api/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-	                <fileset dir="${jss7.dir}/inap/inap-impl/target/">
-	                        <include name="*.jar" />
-	                </fileset>
-            </copy>
+		<echo>Copy Protocols</echo>
+		<copy todir="${restcomm.jss7.dist}/ss7/protocols" failonerror="true">
+			<fileset dir="${jss7.dir}/tcap/tcap-api/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/tcap/tcap-impl/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/map/map-api/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/map/map-impl/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/cap/cap-api/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/cap/cap-impl/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/isup/isup-api/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/isup/isup-impl/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/inap/inap-api/target/">
+				<include name="*.jar"/>
+			</fileset>
+			<fileset dir="${jss7.dir}/inap/inap-impl/target/">
+				<include name="*.jar"/>
+			</fileset>
+		</copy>
     	
-	        <echo>Copy Parser</echo>
-	        <copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-traceparser" failonerror="true">
-	                <fileset dir="${jss7.dir}/tools/trace-parser/bootstrap/target/traceparser-ss7">
-	                        <include name="**" />
-	                </fileset>
-	        </copy>
+		<echo>Copy Parser</echo>
+		<copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-traceparser" failonerror="true">
+			<fileset dir="${jss7.dir}/tools/trace-parser/bootstrap/target/traceparser-ss7">
+				<include name="**"/>
+			</fileset>
+		</copy>
     	
 
 		<echo>Copy Shell</echo>
 		<copy todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true">
 			<fileset dir="${jss7.dir}/management/shell-client/target/restcomm-cli/lib">
-				<include name="**" />
+				<include name="**"/>
 			</fileset>
 		</copy>
 		<copy todir="${restcomm.jss7.dist}/ss7/shell/bin" failonerror="true">
 			<fileset dir="${jss7.dir}/management/shell-client/target/restcomm-cli/bin">
-				<include name="**" />
+				<include name="**"/>
 			</fileset>
 		</copy>
-		<copy file="${jss7.dir}/hardware/cli/target/linkset-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/m3ua/cli/m3ua/target/m3ua-cli-m3ua.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/m3ua/cli/sctp/target/m3ua-cli-sctp.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/sccp/sccp-cli/target/sccp-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/tcap/tcap-cli/target/tcap-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/tcap/tcap-cli/target/tcap-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib" failonerror="true" />
-		<copy file="${jss7.dir}/release/release-build.xml" tofile="${restcomm.jss7.dist}/ss7/build.xml" failonerror="true" />
+		<copy file="${jss7.dir}/hardware/cli/target/linkset-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/m3ua/cli/m3ua/target/m3ua-cli-m3ua.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/m3ua/cli/sctp/target/m3ua-cli-sctp.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/sccp/sccp-cli/target/sccp-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/tcap/tcap-cli/target/tcap-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/tcap/tcap-cli/target/tcap-cli.jar" todir="${restcomm.jss7.dist}/ss7/shell/lib"
+			  failonerror="true"/>
+		<copy file="${jss7.dir}/release/release-build.xml" tofile="${restcomm.jss7.dist}/ss7/build.xml"
+			  failonerror="true"/>
 
         <copy todir="${restcomm.jss7.dist}/ss7/template/META-INF-dialogic/" failonerror="true">
-                <fileset dir="${jss7.dir}/service/src/main/config-dialogic">
-                        <include name="**" />
-                </fileset>
+			<fileset dir="${jss7.dir}/service/src/main/config-dialogic">
+				<include name="**" />
+			</fileset>
         </copy>
         <copy todir="${restcomm.jss7.dist}/ss7/template/META-INF-m3ua-dialogic/" failonerror="true">
-                <fileset dir="${jss7.dir}/service/src/main/config-m3ua-dialogic">
-                        <include name="**" />
-                </fileset>
+			<fileset dir="${jss7.dir}/service/src/main/config-m3ua-dialogic">
+				<include name="**" />
+			</fileset>
         </copy>
-
         <copy todir="${restcomm.jss7.dist}/ss7/restcomm-ss7-service" failonerror="true">
                 <fileset dir="${jss7.dir}/service/target/restcomm-ss7-service">
                         <include name="**" />
@@ -208,7 +307,7 @@
 
 	<target name="build-jss7">
 		<exec failonerror="true" executable="${mvn.executable}" dir="${base.dir}/../">
-			<arg line="install -Dmaven.test.skip=true" />
+			<arg line="clean install -Dmaven.test.skip=true -Dcheckstyle.skip=true" />
 		</exec>
 	</target>
 
@@ -219,11 +318,10 @@
 	</target>
 
 	
-	
 	<target name="make-final-zip" depends="set-time-stamp">
 		<zip destfile="${base.dir}/restcomm-jss7-${release.version}.zip" filesonly="false">
 			<zipfileset dir="${restcomm.jss7.dist}" prefix="restcomm-jss7-${release.version}">
-				<include name="**" />
+				<include name="**"/>
 			</zipfileset>
 		</zip>
 	</target>
